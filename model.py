@@ -15,7 +15,7 @@ class LayerNorm2d(nn.Module):
         x = self.norm(x)
         return x.permute(0, 3, 1, 2)
 
-class DMSA(nn.Module): # scale的取值最大的理论值是10
+class DMSA(nn.Module):  # Downsample Multi-Head Self-Attention (D-MSA)
     def __init__(self, c, num_heads=4, scale = 4, bias=False, attn_dropout=0., residual_scale_init=0.0):
         super(DMSA, self).__init__()
 
@@ -77,7 +77,8 @@ class SimpleGate(nn.Module):
         x1, x2 = torch.chunk(x, 2, dim=1)
         return x1 * x2
         
-class DAB(nn.Module):
+class DSAB(nn.Module):
+    """Decoupled Self-Attention Block (DSAB)."""
     def __init__(self, c, DW_Expand=2, FFN_Expand=2, heads=4, scale=4, drop_out_rate=0.):
         super().__init__()
         dw_channel = c * DW_Expand
@@ -103,7 +104,7 @@ class DAB(nn.Module):
 
     def forward(self, inp):
         x = inp
-        ############GCAM--start#####################
+        ############ DSAB Attention Branch -- start ############
         x = self.norm1(x)
         x = self.conv1(x) #
         x = self.conv2(x)
@@ -112,15 +113,16 @@ class DAB(nn.Module):
         x = self.conv3(x)
         x = self.dropout1(x)
         y = inp + x * self.beta
-        ###########GCAM------end#####################
-        ###########FFN----start######################
+        ############ DSAB Attention Branch -- end ############
+        ############ DSAB FFN Branch -- start ############
         x = self.conv4(self.norm2(y))
         x = self.sg(x)
         x = self.conv5(x)
         x = self.dropout2(x)
         return y + x * self.gamma
-        ##########FFN--END###################
-class CFAM(nn.Module):
+        ############ DSAB FFN Branch -- end ############
+class CDAM(nn.Module):
+    """Cross-Stage Detail Aggregation Module (CDAM)."""
     def __init__(self, c, width=32, layernums = 3):
         super().__init__()
         self.branch_convs = nn.ModuleList()
@@ -170,7 +172,8 @@ class CFAM(nn.Module):
         x = x * self.sca(x)
         return x
 
-class Enhance_model(nn.Module):
+class ADRNet(nn.Module):
+    """Attention-Decoupled Detail Restoration Network (ADR-Net)."""
 
     def __init__(self, img_channel=3, 
                  width=40, 
@@ -188,19 +191,19 @@ class Enhance_model(nn.Module):
 
         self.ups = nn.ModuleList()
         self.downs = nn.ModuleList()
-        self.encfea = nn.ModuleList()
+        self.cdams = nn.ModuleList()
         self.encoders = nn.ModuleList()
         self.decoders = nn.ModuleList()
         self.middle_blks = nn.ModuleList()
 
         chan = width
         for num in enc_blk_nums:
-            blocks = nn.ModuleList([DAB(c=chan, heads=num_heads, scale=scale, drop_out_rate=drop_out_rate) for _ in range(num)])
+            blocks = nn.ModuleList([DSAB(c=chan, heads=num_heads, scale=scale, drop_out_rate=drop_out_rate) for _ in range(num)])
             self.encoders.append(blocks)    
             self.downs.append( nn.Conv2d(chan, 2*chan, 2, 2) )
             chan = chan * 2
 
-        self.middle_blks = nn.ModuleList([DAB(c=chan, heads=num_heads, scale=scale, drop_out_rate=drop_out_rate) for _ in range(middle_blk_num)])
+        self.middle_blks = nn.ModuleList([DSAB(c=chan, heads=num_heads, scale=scale, drop_out_rate=drop_out_rate) for _ in range(middle_blk_num)])
         
         for num in dec_blk_nums:
             self.ups.append(
@@ -211,9 +214,9 @@ class Enhance_model(nn.Module):
             )
 
             chan = chan // 2
-            self.encfea.append(CFAM(chan, width=width, layernums = layernums))
+            self.cdams.append(CDAM(chan, width=width, layernums = layernums))
             self.decoders.append(
-                nn.ModuleList([DAB(c=chan, heads=num_heads, scale=scale, drop_out_rate=drop_out_rate) for _ in range(num)])
+                nn.ModuleList([DSAB(c=chan, heads=num_heads, scale=scale, drop_out_rate=drop_out_rate) for _ in range(num)])
             )
 
         self.padder_size = 2 ** len(self.encoders)
@@ -236,10 +239,10 @@ class Enhance_model(nn.Module):
         for blk in self.middle_blks:
             x = blk(x)
         
-        for decoder_blocks, up, enahnce ,en_skip in zip(self.decoders, self.ups,self.encfea, encs[::-1]):
+        for decoder_blocks, up, cdam ,en_skip in zip(self.decoders, self.ups,self.cdams, encs[::-1]):
             x = up(x)
             _, _, h, w = x.shape
-            x = x + enahnce(encs, size=(h,w)) + en_skip 
+            x = x + cdam(encs, size=(h,w)) + en_skip 
             for decoder in decoder_blocks:
                 x = decoder(x)
         x = self.ending(x)
@@ -268,7 +271,7 @@ if __name__ == '__main__':
     scale = 4
 
     # 实例化模型
-    model = Enhance_model(img_channel=img_channel, width=width, middle_blk_num=middle_blk_num,
+    model = ADRNet(img_channel=img_channel, width=width, middle_blk_num=middle_blk_num,
                          enc_blk_nums=enc_blks, dec_blk_nums=dec_blks, layernums=layernums,num_heads=heads,scale=scale).to('cuda')
     
     input = torch.rand(1, 3, 256, 256).to('cuda')  
