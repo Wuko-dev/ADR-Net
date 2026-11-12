@@ -79,7 +79,7 @@ Dataset links are collected from the official [HVI-CIDNet data preparation instr
 | --- | --- | --- |
 | LOL-v1 | [Original dataset page](https://daooshee.github.io/BMVC2018website/) · [Google Drive mirror](https://drive.google.com/file/d/1L-kqSQyrmMueBh_ziWoPFhfsAh50h20H/view?usp=sharing) | 485 training pairs and 15 test pairs |
 | LOL-v2-real / LOL-v2-synthetic | [Baidu Disk](https://pan.baidu.com/s/17KTa-6GUUW22Q49D5DhhWw?pwd=yixu) (`yixu`) · [Google Drive](https://drive.google.com/file/d/1Ou9EljYZW8o5dbDCf9R34FS8Pd8kEp2U/view?usp=sharing) | Use the Real_captured and Synthetic subsets, respectively |
-| SID / Sony-Total-Dark | [HVI data preparation](https://github.com/Fediory/HVI-CIDNet#data-preparation) · [Retinexformer data preparation](https://github.com/caiyuanhao1998/Retinexformer#2-prepare-dataset) | This implementation requires processed RGB image pairs; see the SID note below |
+| SID / Sony-Total-Dark | [Retinexformer data preparation](https://github.com/caiyuanhao1998/Retinexformer#2-prepare-dataset) | This implementation requires processed RGB image pairs; see the SID note below |
 | DICM, LIME, MEF, NPE, VV | [Baidu Disk](https://pan.baidu.com/s/1FZ5HWT30eghGuaAqqpJGaw?pwd=yixu) (`yixu`) · [HVI data preparation](https://github.com/Fediory/HVI-CIDNet#data-preparation) | Unpaired evaluation images |
 | ExDark | [Official dataset repository](https://github.com/cs-chan/Exclusively-Dark-Image-Dataset) | Downstream low-light object detection; detector training code is not included in this archive |
 
