@@ -2,7 +2,6 @@
 
 **ADR-Net: Attention-Decoupled Detail Restoration Network for Low-Light Image Enhancement**
 
-Kang Liu, Zhe Yang, Zhihao Xv, and Runshi Ji
 
 PyTorch implementation of ADR-Net for low-light image enhancement.
 
